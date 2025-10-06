@@ -602,4 +602,52 @@ end)
 AntiAfkBtn.MouseButton1Click:Connect(function()
     antiAfkEnabled = not antiAfkEnabled
     if antiAfkEnabled then
+        AntiAfkBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+        AntiAfkBtn.Text = "Anti AFK: ON"
         
+        spawn(function()
+            while antiAfkEnabled and player do
+                wait(300)
+                if antiAfkEnabled then
+                    local VirtualUser = game:GetService("VirtualUser")
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end
+            end
+        end)
+    else
+        AntiAfkBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        AntiAfkBtn.Text = "Anti AFK: OFF"
+    end
+end)
+
+-- Character reset handler
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = char:WaitForChild("Humanoid")
+    rootPart = char:WaitForChild("HumanoidRootPart")
+    
+    wait(1)
+    
+    local speed = tonumber(SpeedBox.Text)
+    if speed and speed >= 1 and speed <= 100 then
+        humanoid.WalkSpeed = speed
+    end
+    
+    local jump = tonumber(JumpBox.Text)
+    if jump and jump >= 1 and jump <= 150 then
+        humanoid.JumpPower = jump
+    end
+    
+    if flyEnabled then
+        wait(0.5)
+        enableFly()
+    end
+end)
+
+-- Initialize
+loadWaypoints()
+refreshWaypointList()
+updateCanvasSizes()
+
+print("✅ Waypoint GUI Fixed and Ready!")

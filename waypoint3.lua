@@ -1,5 +1,5 @@
 -- waypoints.lua
--- Compact Waypoint System for Roblox
+-- Compact Waypoint System for Roblox with Persistent Storage
 -- Load: loadstring(game:HttpGet("https://raw.githubusercontent.com/USERNAME/REPO/main/waypoints.lua"))()
 
 local WaypointSystem = {}
@@ -8,6 +8,10 @@ WaypointSystem.__index = WaypointSystem
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
+local HttpService = game:GetService("HttpService")
+
+-- Storage file name
+local STORAGE_FILE = "waypoints_data.json"
 
 function WaypointSystem.new()
     local self = setmetatable({}, WaypointSystem)
@@ -19,9 +23,63 @@ function WaypointSystem.new()
 end
 
 function WaypointSystem:Initialize()
+    self:LoadWaypoints() -- Load saved waypoints first
     self:CreateGUI()
     self:SetupDragging()
+    self:LoadWaypointsToGUI() -- Display loaded waypoints
     print("✅ Waypoint System loaded!")
+    print("📂 Loaded " .. self:CountWaypoints() .. " saved waypoints")
+end
+
+function WaypointSystem:CountWaypoints()
+    local count = 0
+    for _ in pairs(self.waypoints) do count = count + 1 end
+    return count
+end
+
+-- Save waypoints to file
+function WaypointSystem:SaveToFile()
+    local success, err = pcall(function()
+        local data = {}
+        for name, pos in pairs(self.waypoints) do
+            data[name] = {
+                X = pos.X,
+                Y = pos.Y,
+                Z = pos.Z
+            }
+        end
+        local jsonData = HttpService:JSONEncode(data)
+        writefile(STORAGE_FILE, jsonData)
+    end)
+    
+    if not success then
+        warn("❌ Failed to save waypoints:", err)
+    end
+end
+
+-- Load waypoints from file
+function WaypointSystem:LoadWaypoints()
+    local success, err = pcall(function()
+        if isfile(STORAGE_FILE) then
+            local jsonData = readfile(STORAGE_FILE)
+            local data = HttpService:JSONDecode(jsonData)
+            
+            for name, pos in pairs(data) do
+                self.waypoints[name] = Vector3.new(pos.X, pos.Y, pos.Z)
+            end
+        end
+    end)
+    
+    if not success then
+        warn("⚠️ No saved waypoints or failed to load:", err)
+    end
+end
+
+-- Load saved waypoints to GUI
+function WaypointSystem:LoadWaypointsToGUI()
+    for name, _ in pairs(self.waypoints) do
+        self:CreateWaypointItem(name)
+    end
 end
 
 function WaypointSystem:CreateGUI()
@@ -62,6 +120,7 @@ function WaypointSystem:CreateGUI()
     
     self:CreateInputSection(content)
     self:CreateWaypointsList(content)
+    self:CreateFooter(content)
     
     gui.Parent = self.player.PlayerGui
 end
@@ -190,7 +249,7 @@ end
 function WaypointSystem:CreateWaypointsList(parent)
     local scroll = Instance.new("ScrollingFrame")
     scroll.Name = "WaypointsList"
-    scroll.Size = UDim2.new(1, -20, 1, -95)
+    scroll.Size = UDim2.new(1, -20, 1, -115)
     scroll.Position = UDim2.new(0, 10, 0, 90)
     scroll.BackgroundColor3 = Color3.fromRGB(35, 35, 45)
     scroll.BorderSizePixel = 0
@@ -219,6 +278,44 @@ function WaypointSystem:CreateWaypointsList(parent)
     end)
 end
 
+function WaypointSystem:CreateFooter(parent)
+    local footer = Instance.new("Frame")
+    footer.Size = UDim2.new(1, -20, 0, 20)
+    footer.Position = UDim2.new(0, 10, 1, -25)
+    footer.BackgroundTransparency = 1
+    footer.Parent = parent
+    
+    local countLabel = Instance.new("TextLabel")
+    countLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    countLabel.BackgroundTransparency = 1
+    countLabel.Text = "Saved: 0"
+    countLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+    countLabel.TextSize = 11
+    countLabel.Font = Enum.Font.Gotham
+    countLabel.TextXAlignment = Enum.TextXAlignment.Left
+    countLabel.Parent = footer
+    self.countLabel = countLabel
+    
+    local storageLabel = Instance.new("TextLabel")
+    storageLabel.Size = UDim2.new(0.5, 0, 1, 0)
+    storageLabel.Position = UDim2.new(0.5, 0, 0, 0)
+    storageLabel.BackgroundTransparency = 1
+    storageLabel.Text = "💾 Persistent"
+    storageLabel.TextColor3 = Color3.fromRGB(50, 200, 50)
+    storageLabel.TextSize = 11
+    storageLabel.Font = Enum.Font.GothamBold
+    storageLabel.TextXAlignment = Enum.TextXAlignment.Right
+    storageLabel.Parent = footer
+    
+    self:UpdateFooter()
+end
+
+function WaypointSystem:UpdateFooter()
+    if self.countLabel then
+        self.countLabel.Text = "Saved: " .. self:CountWaypoints()
+    end
+end
+
 function WaypointSystem:SaveWaypoint()
     local name = self.textBox.Text:match("^%s*(.-)%s*$")
     
@@ -242,7 +339,9 @@ function WaypointSystem:SaveWaypoint()
     
     self.waypoints[name] = hrp.Position
     self:CreateWaypointItem(name)
+    self:SaveToFile() -- Save to file immediately
     self.textBox.Text = ""
+    self:UpdateFooter()
     self:Notify("✅ Saved: " .. name, Color3.fromRGB(50, 160, 50))
 end
 
@@ -323,6 +422,8 @@ end
 function WaypointSystem:DeleteWaypoint(name, item)
     self.waypoints[name] = nil
     item:Destroy()
+    self:SaveToFile() -- Save after delete
+    self:UpdateFooter()
     self:Notify("🗑️ Deleted: " .. name, Color3.fromRGB(220, 150, 50))
 end
 

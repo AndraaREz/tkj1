@@ -1,12 +1,16 @@
 -- Waypoint & Misc GUI for Roblox
--- Save this as a .lua file and host on GitHub
+-- Fixed Version
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 
+-- Wait for player to load properly
 local player = Players.LocalPlayer
+repeat wait() until player
+repeat wait() until player:FindFirstChild("PlayerGui")
+
 local character = player.Character or player.CharacterAdded:Wait()
 local humanoid = character:WaitForChild("Humanoid")
 local rootPart = character:WaitForChild("HumanoidRootPart")
@@ -20,10 +24,8 @@ local flySpeed = 50
 local originalJumpPower = humanoid.JumpPower
 local flyConnection
 
--- Load saved waypoints from DataStore (simulated with table)
+-- Load saved waypoints
 local function loadWaypoints()
-    -- In real implementation, use DataStoreService
-    -- For now, we'll use a temporary storage
     if _G.SavedWaypoints then
         waypoints = _G.SavedWaypoints
     end
@@ -37,7 +39,13 @@ end
 local ScreenGui = Instance.new("ScreenGui")
 ScreenGui.Name = "WaypointGUI"
 ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+
+-- Protection against multiple instances
+if player.PlayerGui:FindFirstChild("WaypointGUI") then
+    player.PlayerGui.WaypointGUI:Destroy()
+end
+
+ScreenGui.Parent = player.PlayerGui
 
 -- Main Frame
 local MainFrame = Instance.new("Frame")
@@ -50,9 +58,15 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 MainFrame.Parent = ScreenGui
 
-local UICorner = Instance.new("UICorner")
-UICorner.CornerRadius = UDim.new(0, 8)
-UICorner.Parent = MainFrame
+-- Add UI Corner
+local function addCorner(obj, radius)
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, radius or 8)
+    corner.Parent = obj
+    return corner
+end
+
+addCorner(MainFrame, 8)
 
 -- Top Bar
 local TopBar = Instance.new("Frame")
@@ -62,10 +76,9 @@ TopBar.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 TopBar.BorderSizePixel = 0
 TopBar.Parent = MainFrame
 
-local TopCorner = Instance.new("UICorner")
-TopCorner.CornerRadius = UDim.new(0, 8)
-TopCorner.Parent = TopBar
+addCorner(TopBar, 8)
 
+-- Cover bottom corners of top bar
 local TopBarCover = Instance.new("Frame")
 TopBarCover.Size = UDim2.new(1, 0, 0, 15)
 TopBarCover.Position = UDim2.new(0, 0, 1, -15)
@@ -82,7 +95,7 @@ Title.BackgroundTransparency = 1
 Title.Text = "Waypoint System"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
 Title.TextSize = 16
-Title.Font = Enum.Font.GothamBold
+Title.Font = Enum.Font.SourceSansBold
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.Parent = TopBar
 
@@ -95,12 +108,11 @@ MinimizeBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 MinimizeBtn.Text = "-"
 MinimizeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 MinimizeBtn.TextSize = 20
-MinimizeBtn.Font = Enum.Font.GothamBold
+MinimizeBtn.Font = Enum.Font.SourceSansBold
+MinimizeBtn.BorderSizePixel = 0
 MinimizeBtn.Parent = TopBar
 
-local MinCorner = Instance.new("UICorner")
-MinCorner.CornerRadius = UDim.new(0, 4)
-MinCorner.Parent = MinimizeBtn
+addCorner(MinimizeBtn, 4)
 
 -- Close Button
 local CloseBtn = Instance.new("TextButton")
@@ -111,14 +123,13 @@ CloseBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 CloseBtn.TextSize = 16
-CloseBtn.Font = Enum.Font.GothamBold
+CloseBtn.Font = Enum.Font.SourceSansBold
+CloseBtn.BorderSizePixel = 0
 CloseBtn.Parent = TopBar
 
-local CloseCorner = Instance.new("UICorner")
-CloseCorner.CornerRadius = UDim.new(0, 4)
-CloseCorner.Parent = CloseBtn
+addCorner(CloseBtn, 4)
 
--- Tab Buttons Frame
+-- Tab Frame
 local TabFrame = Instance.new("Frame")
 TabFrame.Name = "TabFrame"
 TabFrame.Size = UDim2.new(1, -20, 0, 35)
@@ -126,7 +137,7 @@ TabFrame.Position = UDim2.new(0, 10, 0, 40)
 TabFrame.BackgroundTransparency = 1
 TabFrame.Parent = MainFrame
 
--- Waypoint Tab Button
+-- Waypoint Tab
 local WaypointTab = Instance.new("TextButton")
 WaypointTab.Name = "WaypointTab"
 WaypointTab.Size = UDim2.new(0.48, 0, 1, 0)
@@ -135,14 +146,13 @@ WaypointTab.BackgroundColor3 = Color3.fromRGB(60, 120, 200)
 WaypointTab.Text = "Waypoints"
 WaypointTab.TextColor3 = Color3.fromRGB(255, 255, 255)
 WaypointTab.TextSize = 14
-WaypointTab.Font = Enum.Font.GothamBold
+WaypointTab.Font = Enum.Font.SourceSansBold
+WaypointTab.BorderSizePixel = 0
 WaypointTab.Parent = TabFrame
 
-local WayCorner = Instance.new("UICorner")
-WayCorner.CornerRadius = UDim.new(0, 6)
-WayCorner.Parent = WaypointTab
+addCorner(WaypointTab, 6)
 
--- Misc Tab Button
+-- Misc Tab
 local MiscTab = Instance.new("TextButton")
 MiscTab.Name = "MiscTab"
 MiscTab.Size = UDim2.new(0.48, 0, 1, 0)
@@ -151,14 +161,13 @@ MiscTab.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 MiscTab.Text = "Misc"
 MiscTab.TextColor3 = Color3.fromRGB(255, 255, 255)
 MiscTab.TextSize = 14
-MiscTab.Font = Enum.Font.GothamBold
+MiscTab.Font = Enum.Font.SourceSansBold
+MiscTab.BorderSizePixel = 0
 MiscTab.Parent = TabFrame
 
-local MiscCorner = Instance.new("UICorner")
-MiscCorner.CornerRadius = UDim.new(0, 6)
-MiscCorner.Parent = MiscTab
+addCorner(MiscTab, 6)
 
--- Waypoint Content Frame
+-- Waypoint Content
 local WaypointContent = Instance.new("Frame")
 WaypointContent.Name = "WaypointContent"
 WaypointContent.Size = UDim2.new(1, -20, 1, -90)
@@ -167,7 +176,7 @@ WaypointContent.BackgroundTransparency = 1
 WaypointContent.Visible = true
 WaypointContent.Parent = MainFrame
 
--- Set Waypoint Input
+-- Set Waypoint Section
 local SetLabel = Instance.new("TextLabel")
 SetLabel.Size = UDim2.new(1, 0, 0, 20)
 SetLabel.Position = UDim2.new(0, 0, 0, 0)
@@ -175,7 +184,7 @@ SetLabel.BackgroundTransparency = 1
 SetLabel.Text = "Set Waypoint:"
 SetLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 SetLabel.TextSize = 12
-SetLabel.Font = Enum.Font.Gotham
+SetLabel.Font = Enum.Font.SourceSans
 SetLabel.TextXAlignment = Enum.TextXAlignment.Left
 SetLabel.Parent = WaypointContent
 
@@ -184,16 +193,15 @@ WaypointNameBox.Name = "WaypointNameBox"
 WaypointNameBox.Size = UDim2.new(0.65, 0, 0, 30)
 WaypointNameBox.Position = UDim2.new(0, 0, 0, 25)
 WaypointNameBox.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-WaypointNameBox.PlaceholderText = "Waypoint Name"
+WaypointNameBox.PlaceholderText = "Enter waypoint name"
 WaypointNameBox.Text = ""
 WaypointNameBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 WaypointNameBox.TextSize = 12
-WaypointNameBox.Font = Enum.Font.Gotham
+WaypointNameBox.Font = Enum.Font.SourceSans
+WaypointNameBox.BorderSizePixel = 0
 WaypointNameBox.Parent = WaypointContent
 
-local NameCorner = Instance.new("UICorner")
-NameCorner.CornerRadius = UDim.new(0, 4)
-NameCorner.Parent = WaypointNameBox
+addCorner(WaypointNameBox, 4)
 
 local SetWaypointBtn = Instance.new("TextButton")
 SetWaypointBtn.Name = "SetWaypointBtn"
@@ -203,14 +211,13 @@ SetWaypointBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
 SetWaypointBtn.Text = "Set"
 SetWaypointBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 SetWaypointBtn.TextSize = 12
-SetWaypointBtn.Font = Enum.Font.GothamBold
+SetWaypointBtn.Font = Enum.Font.SourceSansBold
+SetWaypointBtn.BorderSizePixel = 0
 SetWaypointBtn.Parent = WaypointContent
 
-local SetCorner = Instance.new("UICorner")
-SetCorner.CornerRadius = UDim.new(0, 4)
-SetCorner.Parent = SetWaypointBtn
+addCorner(SetWaypointBtn, 4)
 
--- Waypoint List
+-- Waypoint List Section
 local ListLabel = Instance.new("TextLabel")
 ListLabel.Size = UDim2.new(1, 0, 0, 20)
 ListLabel.Position = UDim2.new(0, 0, 0, 65)
@@ -218,7 +225,7 @@ ListLabel.BackgroundTransparency = 1
 ListLabel.Text = "Saved Waypoints:"
 ListLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 ListLabel.TextSize = 12
-ListLabel.Font = Enum.Font.Gotham
+ListLabel.Font = Enum.Font.SourceSans
 ListLabel.TextXAlignment = Enum.TextXAlignment.Left
 ListLabel.Parent = WaypointContent
 
@@ -228,19 +235,18 @@ WaypointList.Size = UDim2.new(1, 0, 1, -90)
 WaypointList.Position = UDim2.new(0, 0, 0, 90)
 WaypointList.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
 WaypointList.BorderSizePixel = 0
-WaypointList.ScrollBarThickness = 4
+WaypointList.ScrollBarThickness = 6
+WaypointList.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
 WaypointList.Parent = WaypointContent
 
-local ListCorner = Instance.new("UICorner")
-ListCorner.CornerRadius = UDim.new(0, 6)
-ListCorner.Parent = WaypointList
+addCorner(WaypointList, 6)
 
 local ListLayout = Instance.new("UIListLayout")
 ListLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ListLayout.Padding = UDim.new(0, 5)
 ListLayout.Parent = WaypointList
 
--- Misc Content Frame
+-- Misc Content
 local MiscContent = Instance.new("Frame")
 MiscContent.Name = "MiscContent"
 MiscContent.Size = UDim2.new(1, -20, 1, -90)
@@ -254,7 +260,8 @@ MiscScroll.Name = "MiscScroll"
 MiscScroll.Size = UDim2.new(1, 0, 1, 0)
 MiscScroll.BackgroundTransparency = 1
 MiscScroll.BorderSizePixel = 0
-MiscScroll.ScrollBarThickness = 4
+MiscScroll.ScrollBarThickness = 6
+MiscScroll.ScrollBarImageColor3 = Color3.fromRGB(100, 100, 100)
 MiscScroll.Parent = MiscContent
 
 local MiscLayout = Instance.new("UIListLayout")
@@ -262,18 +269,20 @@ MiscLayout.SortOrder = Enum.SortOrder.LayoutOrder
 MiscLayout.Padding = UDim.new(0, 10)
 MiscLayout.Parent = MiscScroll
 
+-- Helper function to create misc items
+local function createMiscItem(name, height)
+    local frame = Instance.new("Frame")
+    frame.Name = name
+    frame.Size = UDim2.new(1, 0, 0, height)
+    frame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
+    frame.BorderSizePixel = 0
+    frame.Parent = MiscScroll
+    addCorner(frame, 6)
+    return frame
+end
+
 -- Speed Control
-local SpeedFrame = Instance.new("Frame")
-SpeedFrame.Name = "SpeedFrame"
-SpeedFrame.Size = UDim2.new(1, 0, 0, 60)
-SpeedFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-SpeedFrame.BorderSizePixel = 0
-SpeedFrame.Parent = MiscScroll
-
-local SpeedFrameCorner = Instance.new("UICorner")
-SpeedFrameCorner.CornerRadius = UDim.new(0, 6)
-SpeedFrameCorner.Parent = SpeedFrame
-
+local SpeedFrame = createMiscItem("SpeedFrame", 60)
 local SpeedLabel = Instance.new("TextLabel")
 SpeedLabel.Size = UDim2.new(1, -10, 0, 20)
 SpeedLabel.Position = UDim2.new(0, 5, 0, 5)
@@ -281,7 +290,7 @@ SpeedLabel.BackgroundTransparency = 1
 SpeedLabel.Text = "Speed (1-100):"
 SpeedLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedLabel.TextSize = 12
-SpeedLabel.Font = Enum.Font.GothamBold
+SpeedLabel.Font = Enum.Font.SourceSansBold
 SpeedLabel.TextXAlignment = Enum.TextXAlignment.Left
 SpeedLabel.Parent = SpeedFrame
 
@@ -294,25 +303,14 @@ SpeedBox.PlaceholderText = "16"
 SpeedBox.Text = "16"
 SpeedBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 SpeedBox.TextSize = 12
-SpeedBox.Font = Enum.Font.Gotham
+SpeedBox.Font = Enum.Font.SourceSans
+SpeedBox.BorderSizePixel = 0
 SpeedBox.Parent = SpeedFrame
 
-local SpeedBoxCorner = Instance.new("UICorner")
-SpeedBoxCorner.CornerRadius = UDim.new(0, 4)
-SpeedBoxCorner.Parent = SpeedBox
+addCorner(SpeedBox, 4)
 
 -- Jump Power Control
-local JumpFrame = Instance.new("Frame")
-JumpFrame.Name = "JumpFrame"
-JumpFrame.Size = UDim2.new(1, 0, 0, 60)
-JumpFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-JumpFrame.BorderSizePixel = 0
-JumpFrame.Parent = MiscScroll
-
-local JumpFrameCorner = Instance.new("UICorner")
-JumpFrameCorner.CornerRadius = UDim.new(0, 6)
-JumpFrameCorner.Parent = JumpFrame
-
+local JumpFrame = createMiscItem("JumpFrame", 60)
 local JumpLabel = Instance.new("TextLabel")
 JumpLabel.Size = UDim2.new(1, -10, 0, 20)
 JumpLabel.Position = UDim2.new(0, 5, 0, 5)
@@ -320,7 +318,7 @@ JumpLabel.BackgroundTransparency = 1
 JumpLabel.Text = "Jump Power (1-150):"
 JumpLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
 JumpLabel.TextSize = 12
-JumpLabel.Font = Enum.Font.GothamBold
+JumpLabel.Font = Enum.Font.SourceSansBold
 JumpLabel.TextXAlignment = Enum.TextXAlignment.Left
 JumpLabel.Parent = JumpFrame
 
@@ -333,98 +331,63 @@ JumpBox.PlaceholderText = "50"
 JumpBox.Text = "50"
 JumpBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 JumpBox.TextSize = 12
-JumpBox.Font = Enum.Font.Gotham
+JumpBox.Font = Enum.Font.SourceSans
+JumpBox.BorderSizePixel = 0
 JumpBox.Parent = JumpFrame
 
-local JumpBoxCorner = Instance.new("UICorner")
-JumpBoxCorner.CornerRadius = UDim.new(0, 4)
-JumpBoxCorner.Parent = JumpBox
+addCorner(JumpBox, 4)
 
--- Infinite Jump Toggle
-local InfJumpFrame = Instance.new("Frame")
-InfJumpFrame.Name = "InfJumpFrame"
-InfJumpFrame.Size = UDim2.new(1, 0, 0, 40)
-InfJumpFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-InfJumpFrame.BorderSizePixel = 0
-InfJumpFrame.Parent = MiscScroll
+-- Toggle buttons helper
+local function createToggleButton(parent, text, onColor, offColor)
+    local btn = Instance.new("TextButton")
+    btn.Size = UDim2.new(1, -10, 1, -10)
+    btn.Position = UDim2.new(0, 5, 0, 5)
+    btn.BackgroundColor3 = offColor
+    btn.Text = text .. ": OFF"
+    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    btn.TextSize = 12
+    btn.Font = Enum.Font.SourceSansBold
+    btn.BorderSizePixel = 0
+    btn.Parent = parent
+    addCorner(btn, 4)
+    return btn
+end
 
-local InfJumpCorner = Instance.new("UICorner")
-InfJumpCorner.CornerRadius = UDim.new(0, 6)
-InfJumpCorner.Parent = InfJumpFrame
+-- Infinite Jump
+local InfJumpFrame = createMiscItem("InfJumpFrame", 40)
+local InfJumpBtn = createToggleButton(
+    InfJumpFrame, 
+    "Infinite Jump", 
+    Color3.fromRGB(60, 180, 80),
+    Color3.fromRGB(200, 50, 50)
+)
 
-local InfJumpBtn = Instance.new("TextButton")
-InfJumpBtn.Name = "InfJumpBtn"
-InfJumpBtn.Size = UDim2.new(1, -10, 1, -10)
-InfJumpBtn.Position = UDim2.new(0, 5, 0, 5)
-InfJumpBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-InfJumpBtn.Text = "Infinite Jump: OFF"
-InfJumpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-InfJumpBtn.TextSize = 12
-InfJumpBtn.Font = Enum.Font.GothamBold
-InfJumpBtn.Parent = InfJumpFrame
+-- Fly
+local FlyFrame = createMiscItem("FlyFrame", 40)
+local FlyBtn = createToggleButton(
+    FlyFrame,
+    "Fly",
+    Color3.fromRGB(60, 180, 80),
+    Color3.fromRGB(200, 50, 50)
+)
 
-local InfJumpBtnCorner = Instance.new("UICorner")
-InfJumpBtnCorner.CornerRadius = UDim.new(0, 4)
-InfJumpBtnCorner.Parent = InfJumpBtn
+-- Anti AFK
+local AntiAfkFrame = createMiscItem("AntiAfkFrame", 40)
+local AntiAfkBtn = createToggleButton(
+    AntiAfkFrame,
+    "Anti AFK",
+    Color3.fromRGB(60, 180, 80),
+    Color3.fromRGB(200, 50, 50)
+)
 
--- Fly Toggle
-local FlyFrame = Instance.new("Frame")
-FlyFrame.Name = "FlyFrame"
-FlyFrame.Size = UDim2.new(1, 0, 0, 40)
-FlyFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-FlyFrame.BorderSizePixel = 0
-FlyFrame.Parent = MiscScroll
-
-local FlyFrameCorner = Instance.new("UICorner")
-FlyFrameCorner.CornerRadius = UDim.new(0, 6)
-FlyFrameCorner.Parent = FlyFrame
-
-local FlyBtn = Instance.new("TextButton")
-FlyBtn.Name = "FlyBtn"
-FlyBtn.Size = UDim2.new(1, -10, 1, -10)
-FlyBtn.Position = UDim2.new(0, 5, 0, 5)
-FlyBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-FlyBtn.Text = "Fly: OFF"
-FlyBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-FlyBtn.TextSize = 12
-FlyBtn.Font = Enum.Font.GothamBold
-FlyBtn.Parent = FlyFrame
-
-local FlyBtnCorner = Instance.new("UICorner")
-FlyBtnCorner.CornerRadius = UDim.new(0, 4)
-FlyBtnCorner.Parent = FlyBtn
-
--- Anti AFK Toggle
-local AntiAfkFrame = Instance.new("Frame")
-AntiAfkFrame.Name = "AntiAfkFrame"
-AntiAfkFrame.Size = UDim2.new(1, 0, 0, 40)
-AntiAfkFrame.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-AntiAfkFrame.BorderSizePixel = 0
-AntiAfkFrame.Parent = MiscScroll
-
-local AntiAfkCorner = Instance.new("UICorner")
-AntiAfkCorner.CornerRadius = UDim.new(0, 6)
-AntiAfkCorner.Parent = AntiAfkFrame
-
-local AntiAfkBtn = Instance.new("TextButton")
-AntiAfkBtn.Name = "AntiAfkBtn"
-AntiAfkBtn.Size = UDim2.new(1, -10, 1, -10)
-AntiAfkBtn.Position = UDim2.new(0, 5, 0, 5)
-AntiAfkBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
-AntiAfkBtn.Text = "Anti AFK: OFF"
-AntiAfkBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-AntiAfkBtn.TextSize = 12
-AntiAfkBtn.Font = Enum.Font.GothamBold
-AntiAfkBtn.Parent = AntiAfkFrame
-
-local AntiAfkBtnCorner = Instance.new("UICorner")
-AntiAfkBtnCorner.CornerRadius = UDim.new(0, 4)
-AntiAfkBtnCorner.Parent = AntiAfkBtn
-
--- Update canvas size for misc scroll
-MiscLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+-- Update canvas sizes
+local function updateCanvasSizes()
+    WaypointList.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 10)
     MiscScroll.CanvasSize = UDim2.new(0, 0, 0, MiscLayout.AbsoluteContentSize.Y + 10)
-end)
+end
+
+ListLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSizes)
+MiscLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateCanvasSizes)
 
 -- Functions
 local function createWaypointItem(name, position)
@@ -435,9 +398,7 @@ local function createWaypointItem(name, position)
     ItemFrame.BorderSizePixel = 0
     ItemFrame.Parent = WaypointList
     
-    local ItemCorner = Instance.new("UICorner")
-    ItemCorner.CornerRadius = UDim.new(0, 4)
-    ItemCorner.Parent = ItemFrame
+    addCorner(ItemFrame, 4)
     
     local NameLabel = Instance.new("TextLabel")
     NameLabel.Size = UDim2.new(0.4, 0, 1, 0)
@@ -446,7 +407,7 @@ local function createWaypointItem(name, position)
     NameLabel.Text = name
     NameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     NameLabel.TextSize = 11
-    NameLabel.Font = Enum.Font.Gotham
+    NameLabel.Font = Enum.Font.SourceSans
     NameLabel.TextXAlignment = Enum.TextXAlignment.Left
     NameLabel.TextTruncate = Enum.TextTruncate.AtEnd
     NameLabel.Parent = ItemFrame
@@ -458,12 +419,11 @@ local function createWaypointItem(name, position)
     GotoBtn.Text = "Go"
     GotoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     GotoBtn.TextSize = 10
-    GotoBtn.Font = Enum.Font.GothamBold
+    GotoBtn.Font = Enum.Font.SourceSansBold
+    GotoBtn.BorderSizePixel = 0
     GotoBtn.Parent = ItemFrame
     
-    local GotoCorner = Instance.new("UICorner")
-    GotoCorner.CornerRadius = UDim.new(0, 4)
-    GotoCorner.Parent = GotoBtn
+    addCorner(GotoBtn, 4)
     
     local DeleteBtn = Instance.new("TextButton")
     DeleteBtn.Size = UDim2.new(0.25, 0, 0, 25)
@@ -472,32 +432,15 @@ local function createWaypointItem(name, position)
     DeleteBtn.Text = "Delete"
     DeleteBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     DeleteBtn.TextSize = 10
-    DeleteBtn.Font = Enum.Font.GothamBold
+    DeleteBtn.Font = Enum.Font.SourceSansBold
+    DeleteBtn.BorderSizePixel = 0
     DeleteBtn.Parent = ItemFrame
     
-    local DeleteCorner = Instance.new("UICorner")
-    DeleteCorner.CornerRadius = UDim.new(0, 4)
-    DeleteCorner.Parent = DeleteBtn
+    addCorner(DeleteBtn, 4)
     
     GotoBtn.MouseButton1Click:Connect(function()
         if character and character:FindFirstChild("HumanoidRootPart") then
-            local targetPos = position
-            local distance = (targetPos - character.HumanoidRootPart.Position).Magnitude
-            
-            -- Smooth teleport
-            local tweenInfo = TweenInfo.new(
-                math.min(distance / 100, 3), -- Duration based on distance, max 3 seconds
-                Enum.EasingStyle.Linear,
-                Enum.EasingDirection.Out
-            )
-            
-            local tween = TweenService:Create(
-                character.HumanoidRootPart,
-                tweenInfo,
-                {CFrame = CFrame.new(targetPos)}
-            )
-            
-            tween:Play()
+            character.HumanoidRootPart.CFrame = CFrame.new(position)
         end
     end)
     
@@ -505,12 +448,8 @@ local function createWaypointItem(name, position)
         waypoints[name] = nil
         ItemFrame:Destroy()
         saveWaypoints()
-        updateCanvasSize()
+        updateCanvasSizes()
     end)
-end
-
-local function updateCanvasSize()
-    WaypointList.CanvasSize = UDim2.new(0, 0, 0, ListLayout.AbsoluteContentSize.Y + 10)
 end
 
 local function refreshWaypointList()
@@ -524,13 +463,13 @@ local function refreshWaypointList()
         createWaypointItem(name, position)
     end
     
-    updateCanvasSize()
+    updateCanvasSizes()
 end
 
--- Set Waypoint Button
+-- Event Handlers
 SetWaypointBtn.MouseButton1Click:Connect(function()
     local name = WaypointNameBox.Text
-    if name ~= "" and character and character:FindFirstChild("HumanoidRootPart") then
+    if name ~= "" and name ~= " " and character and character:FindFirstChild("HumanoidRootPart") then
         waypoints[name] = character.HumanoidRootPart.Position
         WaypointNameBox.Text = ""
         refreshWaypointList()
@@ -538,7 +477,7 @@ SetWaypointBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Tab Switching
+-- Tab switching
 WaypointTab.MouseButton1Click:Connect(function()
     WaypointContent.Visible = true
     MiscContent.Visible = false
@@ -555,7 +494,7 @@ MiscTab.MouseButton1Click:Connect(function()
     Title.Text = "Misc Features"
 end)
 
--- Minimize/Maximize
+-- Minimize/Close
 local isMinimized = false
 MinimizeBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
@@ -568,7 +507,6 @@ MinimizeBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Close Button
 CloseBtn.MouseButton1Click:Connect(function()
     ScreenGui:Destroy()
     if flyConnection then
@@ -576,27 +514,22 @@ CloseBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Speed Control
+-- Misc Features
 SpeedBox.FocusLost:Connect(function()
     local speed = tonumber(SpeedBox.Text)
-    if speed and speed >= 1 and speed <= 100 then
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.WalkSpeed = speed
-        end
+    if speed and speed >= 1 and speed <= 100 and character and character:FindFirstChild("Humanoid") then
+        character.Humanoid.WalkSpeed = speed
     else
-        SpeedBox.Text = tostring(character.Humanoid.WalkSpeed)
+        SpeedBox.Text = "16"
     end
 end)
 
--- Jump Power Control
 JumpBox.FocusLost:Connect(function()
     local jump = tonumber(JumpBox.Text)
-    if jump and jump >= 1 and jump <= 150 then
-        if character and character:FindFirstChild("Humanoid") then
-            character.Humanoid.JumpPower = jump
-        end
+    if jump and jump >= 1 and jump <= 150 and character and character:FindFirstChild("Humanoid") then
+        character.Humanoid.JumpPower = jump
     else
-        JumpBox.Text = tostring(character.Humanoid.JumpPower)
+        JumpBox.Text = "50"
     end
 end)
 
@@ -605,4 +538,138 @@ InfJumpBtn.MouseButton1Click:Connect(function()
     infJumpEnabled = not infJumpEnabled
     if infJumpEnabled then
         InfJumpBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
-        InfJumpBtn.Text = "Infinite Jump
+        InfJumpBtn.Text = "Infinite Jump: ON"
+    else
+        InfJumpBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        InfJumpBtn.Text = "Infinite Jump: OFF"
+    end
+end)
+
+UserInputService.JumpRequest:Connect(function()
+    if infJumpEnabled and character and character:FindFirstChild("Humanoid") then
+        character.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- Fly
+local function enableFly()
+    local bg = Instance.new("BodyGyro")
+    bg.P = 9e4
+    bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
+    bg.cframe = rootPart.CFrame
+    bg.Parent = rootPart
+    
+    local bv = Instance.new("BodyVelocity")
+    bv.velocity = Vector3.new(0, 0, 0)
+    bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
+    bv.Parent = rootPart
+    
+    flyConnection = RunService.Heartbeat:Connect(function()
+        if not flyEnabled then
+            bg:Destroy()
+            bv:Destroy()
+            if flyConnection then
+                flyConnection:Disconnect()
+            end
+            return
+        end
+        
+        local cam = workspace.CurrentCamera
+        local moveDirection = Vector3.new()
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveDirection = moveDirection + cam.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveDirection = moveDirection - cam.CFrame.LookVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveDirection = moveDirection - cam.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveDirection = moveDirection + cam.CFrame.RightVector
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+            moveDirection = moveDirection + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDirection = moveDirection - Vector3.new(0, 1, 0)
+        end
+        
+        if moveDirection.Magnitude > 0 then
+            moveDirection = moveDirection.Unit
+        end
+        
+        bv.velocity = moveDirection * flySpeed
+        bg.cframe = cam.CFrame
+    end)
+end
+
+FlyBtn.MouseButton1Click:Connect(function()
+    flyEnabled = not flyEnabled
+    if flyEnabled then
+        FlyBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+        FlyBtn.Text = "Fly: ON"
+        if character and character:FindFirstChild("HumanoidRootPart") then
+            rootPart = character.HumanoidRootPart
+            enableFly()
+        end
+    else
+        FlyBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        FlyBtn.Text = "Fly: OFF"
+    end
+end)
+
+-- Anti AFK
+AntiAfkBtn.MouseButton1Click:Connect(function()
+    antiAfkEnabled = not antiAfkEnabled
+    if antiAfkEnabled then
+        AntiAfkBtn.BackgroundColor3 = Color3.fromRGB(60, 180, 80)
+        AntiAfkBtn.Text = "Anti AFK: ON"
+        
+        spawn(function()
+            while antiAfkEnabled and player do
+                wait(300)
+                if antiAfkEnabled then
+                    local VirtualUser = game:GetService("VirtualUser")
+                    VirtualUser:CaptureController()
+                    VirtualUser:ClickButton2(Vector2.new())
+                end
+            end
+        end)
+    else
+        AntiAfkBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
+        AntiAfkBtn.Text = "Anti AFK: OFF"
+    end
+end)
+
+-- Character reset handler
+player.CharacterAdded:Connect(function(char)
+    character = char
+    humanoid = char:WaitForChild("Humanoid")
+    rootPart = char:WaitForChild("HumanoidRootPart")
+    
+    wait(1)
+    
+    local speed = tonumber(SpeedBox.Text)
+    if speed and speed >= 1 and speed <= 100 then
+        humanoid.WalkSpeed = speed
+    end
+    
+    local jump = tonumber(JumpBox.Text)
+    if jump and jump >= 1 and jump <= 150 then
+        humanoid.JumpPower = jump
+    end
+    
+    if flyEnabled then
+        wait(0.5)
+        enableFly()
+    end
+end)
+
+-- Initialize
+loadWaypoints()
+refreshWaypointList()
+updateCanvasSizes()
+
+print("✅ Waypoint GUI loaded successfully!")

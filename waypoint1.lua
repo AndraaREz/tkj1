@@ -19,6 +19,8 @@ function WaypointSystem.new()
     self.waypoints = {}
     self.isMinimized = false
     self.loopWaypointsEnabled = false
+    self.loopStartWaypoint = nil
+    self.loopingActive = false
 
     -- Misc Features State
     self.flyEnabled = false
@@ -360,8 +362,8 @@ function WaypointSystem:CreateFlySection(parent)
     speedLabel.TextSize = 11
     speedLabel.Font = Enum.Font.Gotham
     speedLabel.TextXAlignment = Enum.TextXAlignment.Left
-    speedLabel.Parent = section
     self.flySpeedLabel = speedLabel
+    speedLabel.Parent = section
 
     local speedBox = Instance.new("TextBox")
     speedBox.Size = UDim2.new(1, -16, 0, 30)
@@ -406,6 +408,7 @@ function WaypointSystem:CreateSpeedSection(parent)
     speedLabel.Font = Enum.Font.Gotham
     speedLabel.TextXAlignment = Enum.TextXAlignment.Left
     self.speedLabel = speedLabel
+    speedLabel.Parent = section
 
     local speedBox = Instance.new("TextBox")
     speedBox.Size = UDim2.new(1, -16, 0, 30)
@@ -573,7 +576,7 @@ function WaypointSystem:SwitchTab(tabName)
         self.waypointsBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         self.miscBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
         self.miscBtn.TextColor3 = Color3.fromRGB(200, 200, 200)
-    else
+    elseif tabName == "Misc" then
         self.waypointsTab.Visible = false
         self.miscTab.Visible = true
         self.waypointsBtn.BackgroundColor3 = Color3.fromRGB(45, 45, 55)
@@ -944,6 +947,7 @@ function WaypointSystem:CreateWaypointItem(name)
     Instance.new("UICorner", delBtn).CornerRadius = UDim.new(0, 5)
 
     goBtn.MouseButton1Click:Connect(function()
+        self:SetLoopStartWaypoint(name) -- Tetapkan waypoint awal looping
         self:GoToWaypoint(name)
     end)
 
@@ -965,15 +969,20 @@ function WaypointSystem:GoToWaypoint(name)
 
         -- Looping Logic
         if self.loopWaypointsEnabled then
-            local currentIndex = table.find(self.waypointOrder, name)
-            if currentIndex then
-                local nextIndex = currentIndex + 1
-                if nextIndex > #self.waypointOrder then
-                    nextIndex = 1 -- Kembali ke awal jika sudah di akhir daftar
+            -- Jika ini adalah waypoint awal atau looping sudah aktif, lanjutkan
+            if name == self.loopStartWaypoint or self.loopingActive then
+                self.loopingActive = true -- Set looping aktif
+
+                local currentIndex = table.find(self.waypointOrder, name)
+                if currentIndex then
+                    local nextIndex = currentIndex + 1
+                    if nextIndex > #self.waypointOrder then
+                        nextIndex = 1 -- Kembali ke awal jika sudah di akhir daftar
+                    end
+                    local nextWaypointName = self.waypointOrder[nextIndex]
+                    task.wait(2) -- Sedikit jeda sebelum teleport ke waypoint berikutnya
+                    self:GoToWaypoint(nextWaypointName) -- Panggil diri sendiri untuk teleport ke waypoint berikutnya
                 end
-                local nextWaypointName = self.waypointOrder[nextIndex]
-                task.wait(2) -- Sedikit jeda sebelum teleport ke waypoint berikutnya
-                self:GoToWaypoint(nextWaypointName) -- Panggil diri sendiri untuk teleport ke waypoint berikutnya
             end
         end
     else
@@ -1087,31 +1096,44 @@ function WaypointSystem:Notify(text, color)
 end
 
 function WaypointSystem:SetupDragging()
-    local dragging, dragStart, startPos
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
 
-    self.header.InputBegan:Connect(function(input)
+    local header = self.header
+
+    if not header then
+        warn("Header tidak ditemukan!")
+        return
+    end
+
+    header.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = true
             dragStart = input.Position
             startPos = self.main.Position
+            print("Mulai menyeret GUI")
         end
     end)
 
-    self.header.InputEnded:Connect(function(input)
+    header.InputEnded:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 then
             dragging = false
+            print("Berhenti menyeret GUI")
         end
     end)
 
     UserInputService.InputChanged:Connect(function(input)
         if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
             local delta = input.Position - dragStart
-            self.main.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
+            if startPos then
+                self.main.Position = UDim2.new(
+                    startPos.X.Scale,
+                    startPos.X.Offset + delta.X,
+                    startPos.Y.Scale,
+                    startPos.Y.Offset + delta.Y
+                )
+            end
         end
     end)
 end
@@ -1133,9 +1155,18 @@ function WaypointSystem:SetLoopWaypoints(enabled)
     self.loopWaypointsEnabled = enabled
     if enabled then
         self:Notify("🔄 Looping Waypoints ON", Color3.fromRGB(50, 200, 50))
+        self.loopingActive = false -- Reset status looping
+        if self.loopStartWaypoint then
+            self:GoToWaypoint(self.loopStartWaypoint) -- Memulai looping dari waypoint awal yang sudah di set
+        end
     else
         self:Notify("🔄 Looping Waypoints OFF", Color3.fromRGB(200, 50, 50))
+        self.loopingActive = false -- Stop looping
     end
+end
+
+function WaypointSystem:SetLoopStartWaypoint(name)
+    self.loopStartWaypoint = name
 end
 
 return WaypointSystem.new()
